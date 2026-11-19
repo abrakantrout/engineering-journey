@@ -1,5 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
+from dotenv import load_dotenv
+import os
 
 # 400	Bad Request	(Invalid request)
 # 401	Unauthorized	(Missing/invalid authentication)
@@ -10,6 +12,11 @@ from pydantic import BaseModel, Field
 # 500	Internal Server Error	(Unexpected server error)
 
 app = FastAPI()
+
+load_dotenv()
+APP_NAME = os.getenv("APP NAME")
+DEBUG = os.getenv("DEBUG")
+API_KEY = os.getenv("API_KEY")
 
 products = [
     {"id": 1, "name": "Laptop", "price": 55000},
