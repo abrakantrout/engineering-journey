@@ -1,7 +1,11 @@
 from fastapi import FastAPI, Query
 from pydantic import BaseModel, Field
+from routers import users, products
 
 app = FastAPI()
+
+app.include_router(users.router)
+app.include_router(products.router)
 
 class User(BaseModel):
     name: str = Field(min_length=3, max_length=50)
@@ -72,3 +76,4 @@ async def get_products(limit: int = Query(default=10, ge=1, le=100)):
 @app.get("/products/{product_id}")
 async def get_product(product_id: int):
     return {"product_id": product_id}
+
