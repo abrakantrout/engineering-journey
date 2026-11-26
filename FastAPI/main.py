@@ -1,79 +1,61 @@
-from fastapi import FastAPI, Query
-from pydantic import BaseModel, Field
-from routers import users, products
+
+from fastapi import FastAPI, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from sqlalchemy import select
+
+from database import get_db
+from models import Course
+from schemas import CourseCreate, CourseResponse
 
 app = FastAPI()
 
-app.include_router(users.router)
-app.include_router(products.router)
 
-class User(BaseModel):
-    name: str = Field(min_length=3, max_length=50)
-    email: str
-    age: int = Field(gt=0, lt=100)
+# CREATE COURSE
+@app.post(
+    "/courses",
+    response_model=CourseResponse,
+    status_code=status.HTTP_201_CREATED
+)
+def create_course(
+    course: CourseCreate,
+    db: Session = Depends(get_db)
+):
+    new_course = Course(
+        title=course.title,
+        description=course.description
+    )
 
-class UserResponse(BaseModel):
-    name: str
-    email: str
+    db.add(new_course)
+    db.commit()
+    db.refresh(new_course)
 
-class Product(BaseModel):
-    name: str = Field(min_length=3, max_length=50)
-    price: float = Field(gt=0)
-    quantity: int = Field(ge=1)
+    return new_course
 
-@app.get("/")
-async def home():
-    return {"message": "Welcome to my API"}
 
-@app.get("/users")
-async def get_users():
-    return {"users": ["Rahul", "Amit", "Priya"]}
+# GET ALL COURSES
+@app.get("/courses", response_model=list[CourseResponse])
+def get_courses(db: Session = Depends(get_db)):
 
-@app.post("/users", response_model=UserResponse)
-async def create_user(user: User):
-    return user
+    statement = select(Course)
+    courses = db.scalars(statement).all()
 
-@app.get("/products")
-async def get_products():
-    return {"products": ["laptop", "phone", "tablet"]}
+    return courses
 
-@app.post("/users")
-async def create_user(user: User):
-    return {"message": "User Created", 
-            "user": user}
 
-@app.post("/products")
-async def create_product(product: Product):
-    return {
-        "message": "Product received successfully",
-        "product": product
-    }
+# GET COURSE BY ID
+@app.get("/courses/{course_id}", response_model=CourseResponse)
+def get_course(
+    course_id: int,
+    db: Session = Depends(get_db)
+):
 
-@app.delete("/users")
-async def delete_user():
-    return {"message": "Users deleted"}
+    statement = select(Course).where(Course.id == course_id)
+    course = db.scalar(statement)
 
-@app.get("/about")
-async def about():
-    return {"project": "FastAPI Learning",
-            "status": "In Progress"}
+    if course is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Course not found"
+        )
 
-@app.get("/users/{user_id}")
-async def get_user(user_id: int):
-    return {"user_id": user_id}
-
-@app.get("/products/filter")
-async def filter_products(category: str, limit: int = 10):
-    return {
-        "category": category,
-        "limit": limit
-    }
-
-@app.get("/products")
-async def get_products(limit: int = Query(default=10, ge=1, le=100)):
-    return {"limit": limit}
-
-@app.get("/products/{product_id}")
-async def get_product(product_id: int):
-    return {"product_id": product_id}
-
+    return course
